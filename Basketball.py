@@ -1,95 +1,86 @@
 import random
 
+# My basketball simulation project
+# Compare shooting a 3-pointer vs taking a 2 and fouling in the last 30 seconds
 
-THREE_PT_PCT = 0.35         # your 3-point percentage
-TWO_PT_PCT = 0.55           # your 2-point percentage
-OPP_FT_PCT = 0.65           # opponent free-throw percentage
-OFF_REB_PCT = 0.25          # chance you get an offensive rebound
-OT_WIN_PROB = 0.50          # probability you win in overtime
-TIME_REMAINING = 30         # starting time (seconds)
-TRIALS = 10000              # number of Monte Carlo simulations
+# PARAMETERS
+three_point_chance = 0.35       # chance to make a 3-pointer
+two_point_chance = 0.55         # chance to make a 2-pointer
+opp_free_throw = 0.65           # opponent free throw chance
+offensive_rebound = 0.25        # chance to grab an offensive rebound
+overtime_win = 0.5              # chance to win in overtime
+num_simulations = 10000         # number of simulation trials
 
-# -----------------------------
-# SIMULATION FUNCTIONS
-# -----------------------------
-
-def simulate_take_three():
-    """Simulates scenario where team shoots a 3 while down 3."""
-
-    # Shoot the 3-pointer
-    if random.random() < THREE_PT_PCT:
-        # You made the 3 → game tied → overtime
-        return random.random() < OT_WIN_PROB
+# Function: try shooting a 3-pointer
+def try_three():
+    points = 0
+    if random.random() < three_point_chance:
+        points += 3
+        win = random.random() < overtime_win
+        return win, points
     else:
-        # Missed → try for offensive rebound
-        if random.random() < OFF_REB_PCT:
-            # Take another 3
-            if random.random() < THREE_PT_PCT:
-                return random.random() < OT_WIN_PROB
-        # Miss again → lose
-        return False
+        if random.random() < offensive_rebound:
+            if random.random() < three_point_chance:
+                points += 3
+                win = random.random() < overtime_win
+                return win, points
+        return False, points
 
+# Function: take a 2-pointer and then foul
+def try_two_and_foul():
+    points = 0
+    made_two = random.random() < two_point_chance
+    if made_two:
+        points += 2
+    else:
+        return False, points
 
-def simulate_take_two_and_foul():
-    """
-    Simulates scenario where the team takes an easy 2,
-    then fouls and hopes opponent misses at least one FT.
-    """
+    # Foul opponent
+    ft1 = random.random() < opp_free_throw
+    ft2 = random.random() < opp_free_throw
+    opp_points = ft1 + ft2
 
-    # Make or miss the 2-pointer?
-    made_two = random.random() < TWO_PT_PCT
-
-    if not made_two:
-        return False  # missed the 2 → lose immediately
-
-    # Now down 1 and foul opponent
-    ft1 = random.random() < OPP_FT_PCT
-    ft2 = random.random() < OPP_FT_PCT
-
-    opp_points = ft1 + ft2  # 0, 1, or 2 points
-
-    # After free throws: you are down 1, 2, or 3
-    # Must get the ball back with about ~7 seconds left
-
-    # You get final possession:
     if opp_points == 0:
-        # Down 1 → can win with a 2
-        return random.random() < TWO_PT_PCT
+        if random.random() < two_point_chance:
+            points += 2
+            return True, points
+        return False, points
     elif opp_points == 1:
-        # Down 2 → must tie with a 2 → overtime
-        if random.random() < TWO_PT_PCT:
-            return random.random() < OT_WIN_PROB
-        return False
+        if random.random() < two_point_chance:
+            points += 2
+            win = random.random() < overtime_win
+            return win, points
+        return False, points
     else:
-        # Down 3 → must hit a 3 → overtime
-        if random.random() < THREE_PT_PCT:
-            return random.random() < OT_WIN_PROB
-        return False
+        if random.random() < three_point_chance:
+            points += 3
+            win = random.random() < overtime_win
+            return win, points
+        return False, points
 
-
-# -----------------------------
-# RUN MONTE CARLO SIMULATION
-# -----------------------------
-
+# RUN SIMULATION
 wins_three = 0
-wins_two_foul = 0
+wins_two = 0
+total_points_three = 0
+total_points_two = 0
 
-for _ in range(TRIALS):
-    if simulate_take_three():
+for _ in range(num_simulations):
+    win, pts = try_three()
+    if win:
         wins_three += 1
-    if simulate_take_two_and_foul():
-        wins_two_foul += 1
+    total_points_three += pts
 
-# -----------------------------
-# OUTPUT RESULTS
-# -----------------------------
+    win, pts = try_two_and_foul()
+    if win:
+        wins_two += 1
+    total_points_two += pts
 
+# PRINT RESULTS
 print("----- RESULTS -----")
-print(f"Trials run: {TRIALS}")
-print()
-
-print("STRATEGY 1: Shoot a 3 while down 3")
-print(f"Win rate: {wins_three / TRIALS * 100:.2f}%")
-
-print("\nSTRATEGY 2: Take a 2, then foul")
-print(f"Win rate: {wins_two_foul / TRIALS * 100:.2f}%")
+print(f"Simulations run: {num_simulations}\n")
+print("STRATEGY 1: Shoot a 3")
+print(f"Win rate: {wins_three / num_simulations * 100:.2f}%")
+print(f"Average points scored: {total_points_three / num_simulations:.2f}\n")
+print("STRATEGY 2: Take a 2 then foul")
+print(f"Win rate: {wins_two / num_simulations * 100:.2f}%")
+print(f"Average points scored: {total_points_two / num_simulations:.2f}")
